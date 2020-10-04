@@ -1,5 +1,6 @@
 ﻿#include <iostream>
 #include <sstream>
+#include <string>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 
@@ -111,9 +112,22 @@ int server() {
 			break;
 		}
 
-		strcat_s(recvText, to_string(strlen(recvText)).c_str());
+		int j = 0;
+		string buf, result = "", recvTextStr = recvText;
+ 
+		for (int i = 0; i < strlen(recvText); i++) {
+			if (recvText[i] == '.') {
+				buf = recvTextStr.substr(j, i);
+				result = result + buf + ". " + to_string(i - j + 1) + "\n";
+				j = i + 1;
+			}
+		}
 
-		retVal = send(clientSocket, recvText, RECVTEXTLEN, 0);
+		int len = recvTextStr.length();
+		buf = recvTextStr.substr(j, len);
+		result = result + buf + " " + to_string(len - j + 1) + "\n";
+
+		retVal = send(clientSocket, result.c_str(), RECVTEXTLEN, 0);
 
 		if (retVal == SOCKET_ERROR) {
 			cerr << "send failed with error: " << WSAGetLastError() << "\n";

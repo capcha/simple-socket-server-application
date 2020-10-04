@@ -1,5 +1,6 @@
 ﻿#include <iostream>
 #include <sstream>
+#include <string>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 
@@ -18,7 +19,7 @@ const int IPLEN = 16;
 
 int client() {
 	WSADATA wsaData;
-	char ip[IPLEN], port[PORTLEN], text[TEXTLEN];
+	char ip[IPLEN], port[PORTLEN], text[TEXTLEN] = "", buf[TEXTLEN];
 
 	int retVal = WSAStartup(MAKEWORD(2, 2), &wsaData);
 
@@ -70,8 +71,17 @@ int client() {
 		WSACleanup();
 		return 1;
 	}
+	
+	while (buf[strlen(buf) - 1] != ';') {
+		cin >> buf;
+		strcat_s(text, buf);
+		strcat_s(text, " ");
+	}
 
-	cin >> text;
+	if (strlen(buf) == 0) {
+		cerr << "Input reader error" << "\n";
+		return 1;
+	}
 
 	retVal = send(clientSocket, text, strlen(text) + 1, 0);
 
@@ -95,7 +105,7 @@ int client() {
 
 	if (charRecvText[0] != 0x00) {
 
-		cout << charRecvText;
+		cout << charRecvText << endl;
 
 	}
 
