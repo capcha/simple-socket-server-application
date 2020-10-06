@@ -10,8 +10,6 @@ using namespace std;
 // Для работы с сокетам
 #pragma comment(lib, "Ws2_32.lib")
 
-const char* SERVERIP = "127.0.0.1";
-const char* SERVERPORT = "8001";
 const int TEXTLEN = 1024;
 const int RECVTEXTLEN = 2048;
 const int PORTLEN = 6;
@@ -40,11 +38,6 @@ int client() {
 	// Сокет биндится на адрес, чтобы принимать входящие соединения
 	hints.ai_flags = AI_PASSIVE;
 
-	// Инициализируем структуру, хранящую адрес сокета - addr.
-	cin >> ip >> port;
-
-	retVal = getaddrinfo(ip, port, &hints, &addr);
-
 	// Если инициализация структуры адреса завершилась с ошибкой,
 	// выведем сообщением об этом и завершим выполнение программы 
 	if (retVal != 0) {
@@ -53,7 +46,7 @@ int client() {
 		return 1;
 	}
 
-	SOCKET clientSocket = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+	SOCKET clientSocket = socket(hints.ai_family, hints.ai_socktype, hints.ai_protocol);
 
 	if (clientSocket == INVALID_SOCKET) {
 		cerr << "Error at socket: " << WSAGetLastError() << "\n";
@@ -61,7 +54,10 @@ int client() {
 		return 1;
 	}
 
-	SOCKADDR_IN serverInfo;
+	// Инициализируем структуру, хранящую адрес сокета - addr.
+	cin >> ip >> port;
+
+	retVal = getaddrinfo(ip, port, &hints, &addr);
 
 	retVal = connect(clientSocket, addr->ai_addr, (int)addr->ai_addrlen);
 

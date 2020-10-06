@@ -85,14 +85,17 @@ int server() {
 
 		int fromlen = sizeof(from);
 
-		clientSocket = accept(serverSocket, (struct sockaddr*) & from, &fromlen);
+		clientSocket = accept(serverSocket, (struct sockaddr*) &from, &fromlen);
 
 		if (clientSocket == INVALID_SOCKET) {
 			cerr << "accpet error at socket: " << WSAGetLastError() << "\n";
 			WSACleanup();
 			return 1;
 		}
-		cout << "ACCEPTED";
+
+		inet_ntop(hints.ai_family, &from.sin_addr, ip, INET_ADDRSTRLEN);
+
+		cout << "New connection accepted from " << ip << " port: " << htons(from.sin_port) << endl;
 
 		char recvText[RECVTEXTLEN];
 
@@ -115,11 +118,12 @@ int server() {
 		int j = 0;
 		string buf, result = "", recvTextStr = recvText;
  
-		for (int i = 0; i < strlen(recvText); i++) {
+		for (int i = 0; i < recvTextStr.length(); i++) {
 			if (recvText[i] == '.') {
-				buf = recvTextStr.substr(j, i);
+				buf = "";
+				buf = recvTextStr.substr(j, i - j);
 				result = result + buf + ". " + to_string(i - j + 1) + "\n";
-				j = i + 1;
+				j = i + 2;
 			}
 		}
 
@@ -153,4 +157,5 @@ int server() {
 int main() {
 	cout << "SERVER STARTED" << endl;
 	server();
+	cout << "SERVER STOPPED" << endl;
 }
