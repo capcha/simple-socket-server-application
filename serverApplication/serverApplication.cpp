@@ -3,7 +3,7 @@
 #include <string>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
-#include <list>
+#include <vector>
 #include <thread>
 
 using namespace std;
@@ -12,9 +12,10 @@ struct client {
 	SOCKET socket = SOCKET_ERROR;
 	SOCKADDR_IN sockADDR_IN;
 	string name = "";
+	int id = -1;
 
 	client() {};
-	client(SOCKET _socket, SOCKADDR_IN sADDR_IN, string _name) : socket(_socket), sockADDR_IN(sADDR_IN), name(_name) {};
+	client(SOCKET _socket, SOCKADDR_IN sADDR_IN, string _name, int _id) : socket(_socket), sockADDR_IN(sADDR_IN), name(_name), id(_id) {};
 };
 
 // Необходимо, чтобы линковка происходила с DLL-библиотекой 
@@ -27,13 +28,13 @@ const int RECVTEXTLEN = 2048;
 const int PORTLEN = 6;
 const int IPLEN = 16;
 const int MAXUSERAMOUNT = 50;
-list<client> clients;
-
+vector<client> clients;
 
 int chat(client& clientI) {
 
 	char recvText[RECVTEXTLEN];
 	int retVal;
+	int erasedId;
 
 	while (true) {
 		retVal = recv(clientI.socket, recvText, RECVTEXTLEN, 0);
@@ -47,17 +48,25 @@ int chat(client& clientI) {
 		
 		string result = clientI.name;
 
-
 		if (recvText == "exit") {
 			result.append(" left the chat");
 
 			closesocket(clientI.socket);
 
-			clients.remove(clientI);
+			erasedId = clientI.id;
+
+			clients.erase(clients.begin() + erasedId);
+
+			for (int i = erasedId; i < clients.size(); i++) {
+				clients[i].id = i;
+			}
+
+			for (client i : clients) {
+				retVal = send(i.socket, result.c_str(), RECVTEXTLEN, 0);
+			}
 
 			return 1;
 		}
-
 
 		for (client i : clients) {
 			result = clientI.name;
@@ -70,7 +79,14 @@ int chat(client& clientI) {
 			if (retVal == SOCKET_ERROR) {
 				cerr << "send failed with error: " << WSAGetLastError() << "\n";
 				closesocket(i.socket);
-				clients.remove(i);
+
+				erasedId = i.id;
+
+				clients.erase(clients.begin() + erasedId);
+				for (int i = erasedId; i < clients.size(); i++) {
+					clients[i].id = i;
+				}
+
 				return 1;
 			}
 		}
@@ -174,10 +190,10 @@ int server() {
 
 		if (userAmount <= MAXUSERAMOUNT) {
 
-			tempClient = client(clientSocket, from, clientName);
-			
+			tempClient = client(clientSocket, from, clientName, userAmount - 1);
+			inet_ntop(hints.ai_family, &tempClient.sockADDR_IN.sin_addr, ip, INET_ADDRSTRLEN);
 			char newConnection[RECVTEXTLEN] = "New client connected:\n";
-			strcat_s(newConnection, inet_ntoa(tempClient.sockADDR_IN.sin_addr));
+			strcat_s(newConnection, ip);
 			strcat_s(newConnection, "\nHello, ");
 			strcat_s(newConnection, tempClient.name.c_str());
 
@@ -187,7 +203,13 @@ int server() {
 				if (retVal == SOCKET_ERROR) {
 					cerr << "send failed with error: " << WSAGetLastError() << "\n";
 					closesocket(i.socket);
-					clients.remove(i);
+					int erasedId = i.id;
+
+					clients.erase(clients.begin() + erasedId);
+
+					for (int i = erasedId; i < clients.size(); i++) {
+						clients[i].id = i;
+					}
 					return 1;
 				}
 			}
@@ -210,7 +232,8 @@ int server() {
 			closesocket(clientSocket);
 		}
 
-		thread threadI = thread(chat, tempClient.socket);
+		thread th(chat, ref(tempClient));
+		
 	}
 
 	closesocket(serverSocket);

@@ -3,6 +3,7 @@
 #include <string>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
+#include <thread>
 
 using namespace std;
 
@@ -14,6 +15,14 @@ const int TEXTLEN = 1024;
 const int RECVTEXTLEN = 2048;
 const int PORTLEN = 6;
 const int IPLEN = 16;
+
+int sendClient(SOCKET& clientSocket) {
+
+}
+
+int recvClient(SOCKET& clientSocket) {
+
+}
 
 int client() {
 	WSADATA wsaData;
@@ -67,7 +76,21 @@ int client() {
 		WSACleanup();
 		return 1;
 	}
-	
+
+	string name;
+
+	cout << "Enter your name: " << endl;
+	cin >> name;
+
+	retVal = send(clientSocket, name.c_str(), name.length() + 1, 0);
+
+	if (retVal == SOCKET_ERROR) {
+		cerr << "send failed with error: " << WSAGetLastError() << "\n";
+		closesocket(clientSocket);
+		WSACleanup();
+		return 1;
+	}
+
 	while (buf[strlen(buf) - 1] != ';') {
 		cin >> buf;
 		strcat_s(text, buf);
@@ -103,6 +126,10 @@ int client() {
 
 		cout << charRecvText << endl;
 
+	}
+
+	while (true) {
+		thread threadI = thread(sendClient, recvClient, clientSocket);
 	}
 
 	closesocket(clientSocket);
