@@ -29,12 +29,15 @@ const int PORTLEN = 6;
 const int IPLEN = 16;
 const int MAXUSERAMOUNT = 50;
 vector<client> clients;
+int userAmount;
 
-int chat(client& clientI) {
+DWORD WINAPI chat(LPVOID clientIA) {
 
 	char recvText[RECVTEXTLEN];
 	int retVal;
 	int erasedId;
+
+	client clientI = *((client*)clientIA);
 
 	while (true) {
 		retVal = recv(clientI.socket, recvText, RECVTEXTLEN, 0);
@@ -42,19 +45,30 @@ int chat(client& clientI) {
 		if (retVal == SOCKET_ERROR) {
 			cerr << "bind failed with error: " << WSAGetLastError() << "\n";
 			closesocket(clientI.socket);
+
+			erasedId = clientI.id;
+
+			clients.erase(clients.begin() + erasedId);
+			for (int i = erasedId; i < clients.size(); i++) {
+				clients[i].id = i;
+			}
+
+			userAmount--;
 			WSACleanup();
-			return 1;
+			return SOCKET_ERROR;
 		}
 		
 		string result = clientI.name;
 
-		if (recvText == "exit") {
+		if (strcmp(recvText, "exit; ") == 0) {
 			result.append(" left the chat");
+
+			cout << result << endl;
 
 			closesocket(clientI.socket);
 
 			erasedId = clientI.id;
-
+			
 			clients.erase(clients.begin() + erasedId);
 
 			for (int i = erasedId; i < clients.size(); i++) {
@@ -64,12 +78,11 @@ int chat(client& clientI) {
 			for (client i : clients) {
 				retVal = send(i.socket, result.c_str(), RECVTEXTLEN, 0);
 			}
-
+			userAmount--;
 			return 1;
 		}
 
 		for (client i : clients) {
-			result = clientI.name;
 			result.append(": ");
 			result.append(recvText);
 			result.append("\n");
@@ -96,7 +109,7 @@ int chat(client& clientI) {
 int server() {
 	WSADATA wsaData;
 	char ip[IPLEN];
-	int userAmount = 0;
+	userAmount = 0;
 	client tempClient;
 
 	int retVal = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -166,13 +179,12 @@ int server() {
 		clientSocket = accept(serverSocket, (struct sockaddr*) &from, &fromlen);
 
 		if (clientSocket == INVALID_SOCKET) {
-			cerr << "accpet error at socket: " << WSAGetLastError() << "\n";
+			cerr << "accept error at socket: " << WSAGetLastError() << "\n";
 			WSACleanup();
 			return 1;
 		}
 
 		inet_ntop(hints.ai_family, &from.sin_addr, ip, INET_ADDRSTRLEN);
-
 		cout << "New connection accepted from " << ip << " port: " << htons(from.sin_port) << endl;
 		cout << "Users on server: " << ++userAmount << endl;
 
@@ -196,6 +208,9 @@ int server() {
 			strcat_s(newConnection, ip);
 			strcat_s(newConnection, "\nHello, ");
 			strcat_s(newConnection, tempClient.name.c_str());
+			strcat_s(newConnection, "\n");
+
+			clients.push_back(tempClient);
 
 			for (client i : clients) {
 				retVal = send(i.socket, newConnection, RECVTEXTLEN, 0); 
@@ -214,14 +229,13 @@ int server() {
 				}
 			}
 
-			clients.push_back(tempClient);
 
 		}
 
 		else {
 			--userAmount;
-			cout << "Server is full" << endl;
-			retVal = send(clientSocket, "Server is full", RECVTEXTLEN, 0);
+			cout << "Server is full\n" << endl;
+			retVal = send(clientSocket, "Server is full\n", RECVTEXTLEN, 0);
 
 			if (retVal == SOCKET_ERROR) {
 				cerr << "send failed with error: " << WSAGetLastError() << "\n";
@@ -232,8 +246,9 @@ int server() {
 			closesocket(clientSocket);
 		}
 
-		thread th(chat, ref(tempClient));
-		
+		DWORD threadID;
+		CreateThread(NULL, NULL, chat, &tempClient, NULL, &threadID);
+		//thread th(chat, ref(tempClient));
 	}
 
 	closesocket(serverSocket);

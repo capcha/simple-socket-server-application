@@ -15,18 +15,87 @@ const int TEXTLEN = 1024;
 const int RECVTEXTLEN = 2048;
 const int PORTLEN = 6;
 const int IPLEN = 16;
+const char* IP = "127.0.0.1";
+const char* PORT = "2001";
+bool down;
 
-int sendClient(SOCKET& clientSocket) {
+DWORD WINAPI recieveCL(LPVOID clientIA) {
 
+	SOCKET clientSocket = *((SOCKET*)clientIA);
+
+	char recvText[RECVTEXTLEN];
+
+	int retVal;
+
+	retVal = recv(clientSocket, recvText, RECVTEXTLEN + 1, 0);
+
+	if (retVal == SOCKET_ERROR) {
+		cerr << "recv failed with error: " << WSAGetLastError() << "\n";
+		closesocket(clientSocket);
+		down = true;
+		WSACleanup();
+		return 0;
+	}
+
+	if (strcmp(recvText, "Server is full\n") == 0) {
+		cout << "Server is full" << endl;
+		down = true;
+		return 0;
+	}
+
+	if (!down) {
+		cout << recvText;
+	}
+
+	return 1;
 }
 
-int recvClient(SOCKET& clientSocket) {
+DWORD WINAPI sendCL(LPVOID clientIA) {
 
+	SOCKET clientSocket = *((SOCKET*)clientIA);
+
+	int retVal; 
+	char text[TEXTLEN] = "", buf[TEXTLEN];
+
+	while (buf[strlen(buf) - 1] != ';') {
+		cin >> buf;
+		strcat_s(text, buf);
+		strcat_s(text, " ");
+	}
+
+	if (strlen(buf) == 0) {
+		cerr << "Input reader error" << "\n";
+		down = true;
+		return 0;
+	}
+
+	retVal = send(clientSocket, text, strlen(text) + 1, 0);
+
+	if (strcmp(text, "exit; ") == 0) {
+		down = true;
+		return 0;
+	}
+
+	if (retVal == SOCKET_ERROR) {
+		cerr << "send failed with error: " << WSAGetLastError() << "\n";
+		down = true;
+		closesocket(clientSocket);
+		WSACleanup();
+		return 0;
+	}
+
+	return 1;
 }
+
+//void invokeSendRecieve(SOCKET& clientSocket) {
+//	recieveCL(clientSocket);
+//	sendCL(clientSocket);
+//}
 
 int client() {
 	WSADATA wsaData;
 	char ip[IPLEN], port[PORTLEN], text[TEXTLEN] = "", buf[TEXTLEN];
+	down = false;
 
 	int retVal = WSAStartup(MAKEWORD(2, 2), &wsaData);
 
@@ -63,10 +132,7 @@ int client() {
 		return 1;
 	}
 
-	// Инициализируем структуру, хранящую адрес сокета - addr.
-	cin >> ip >> port;
-
-	retVal = getaddrinfo(ip, port, &hints, &addr);
+	retVal = getaddrinfo(IP, PORT, &hints, &addr);
 
 	retVal = connect(clientSocket, addr->ai_addr, (int)addr->ai_addrlen);
 
@@ -91,45 +157,12 @@ int client() {
 		return 1;
 	}
 
-	while (buf[strlen(buf) - 1] != ';') {
-		cin >> buf;
-		strcat_s(text, buf);
-		strcat_s(text, " ");
-	}
-
-	if (strlen(buf) == 0) {
-		cerr << "Input reader error" << "\n";
-		return 1;
-	}
-
-	retVal = send(clientSocket, text, strlen(text) + 1, 0);
-
-	if (retVal == SOCKET_ERROR) {
-		cerr << "send failed with error: " << WSAGetLastError() << "\n";
-		closesocket(clientSocket);
-		WSACleanup();
-		return 1;
-	}
-
-	char charRecvText[RECVTEXTLEN];
-
-	retVal = recv(clientSocket, charRecvText, RECVTEXTLEN, 0);
-
-	if (retVal == SOCKET_ERROR) {
-		cerr << "recv failed with error: " << WSAGetLastError() << "\n";
-		closesocket(clientSocket);
-		WSACleanup();
-		return 1;
-	}
-
-	if (charRecvText[0] != 0x00) {
-
-		cout << charRecvText << endl;
-
-	}
-
-	while (true) {
-		thread threadI = thread(sendClient, recvClient, clientSocket);
+	while (!down) {
+		//invokeSendRecieve(clientSocket);
+		DWORD threadID;
+		CreateThread(NULL, NULL, sendCL, &clientSocket, NULL, &threadID);
+		CreateThread(NULL, NULL, recieveCL, &clientSocket, NULL, &threadID);
+		//thread th(invokeSendRecieve, ref(clientSocket));
 	}
 
 	closesocket(clientSocket);
