@@ -49,10 +49,11 @@ DWORD WINAPI chat(LPVOID clientIA) {
 			erasedId = clientI.id;
 
 			clients.erase(clients.begin() + erasedId);
-			for (int i = erasedId; i < clients.size(); i++) {
+			for (int i = 0; i < clients.size(); i++) {
 				clients[i].id = i;
 			}
 
+			erasedId = 0;
 			userAmount--;
 			WSACleanup();
 			return SOCKET_ERROR;
@@ -61,33 +62,45 @@ DWORD WINAPI chat(LPVOID clientIA) {
 		string result = clientI.name;
 
 		if (strcmp(recvText, "exit; ") == 0) {
-			result.append(" left the chat");
+			result.append(" left the chat\n");
 
-			cout << result << endl;
+			cout << result;
 
-			closesocket(clientI.socket);
 
-			erasedId = clientI.id;
+			for (client i : clients) {
+				if (i.name == clientI.name) {
+					erasedId = i.id;
+				}
+			}
 			
 			clients.erase(clients.begin() + erasedId);
 
-			for (int i = erasedId; i < clients.size(); i++) {
+			for (int i = 0; i < clients.size(); i++) {
 				clients[i].id = i;
 			}
+
+			userAmount--;
+			closesocket(clientI.socket);
 
 			for (client i : clients) {
 				retVal = send(i.socket, result.c_str(), RECVTEXTLEN, 0);
 			}
-			userAmount--;
+			
+			erasedId = 0;
+
 			return 1;
 		}
 
-		for (client i : clients) {
-			result.append(": ");
-			result.append(recvText);
-			result.append("\n");
+		result.append(": ");
+		result.append(recvText);
+		result.append("\n");
+		cout << result;
 
-			retVal = send(i.socket, result.c_str(), RECVTEXTLEN, 0);
+		for (client i : clients) {
+			
+			if (i.id != clientI.id) {
+				retVal = send(i.socket, result.c_str(), RECVTEXTLEN, 0);
+			}
 
 			if (retVal == SOCKET_ERROR) {
 				cerr << "send failed with error: " << WSAGetLastError() << "\n";
@@ -96,7 +109,7 @@ DWORD WINAPI chat(LPVOID clientIA) {
 				erasedId = i.id;
 
 				clients.erase(clients.begin() + erasedId);
-				for (int i = erasedId; i < clients.size(); i++) {
+				for (int i = 0; i < clients.size(); i++) {
 					clients[i].id = i;
 				}
 
@@ -222,7 +235,7 @@ int server() {
 
 					clients.erase(clients.begin() + erasedId);
 
-					for (int i = erasedId; i < clients.size(); i++) {
+					for (int i = 0; i < clients.size(); i++) {
 						clients[i].id = i;
 					}
 					return 1;
@@ -248,7 +261,7 @@ int server() {
 
 		DWORD threadID;
 		CreateThread(NULL, NULL, chat, &tempClient, NULL, &threadID);
-		//thread th(chat, ref(tempClient));
+		//thread th(chat, rt,ef(tempClient));
 	}
 
 	closesocket(serverSocket);

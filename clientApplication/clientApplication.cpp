@@ -27,6 +27,12 @@ DWORD WINAPI recieveCL(LPVOID clientIA) {
 
 	int retVal;
 
+	if (down) {
+		closesocket(clientSocket);
+		WSACleanup();
+		return 0;
+	}
+
 	retVal = recv(clientSocket, recvText, RECVTEXTLEN + 1, 0);
 
 	if (retVal == SOCKET_ERROR) {
@@ -44,7 +50,7 @@ DWORD WINAPI recieveCL(LPVOID clientIA) {
 	}
 
 	if (!down) {
-		cout << recvText;
+		cout  << recvText;
 	}
 
 	return 1;
@@ -71,7 +77,7 @@ DWORD WINAPI sendCL(LPVOID clientIA) {
 
 	retVal = send(clientSocket, text, strlen(text) + 1, 0);
 
-	if (strcmp(text, "exit; ") == 0) {
+	if (strcmp(text, "exit;") == 0) {
 		down = true;
 		return 0;
 	}
@@ -132,7 +138,11 @@ int client() {
 		return 1;
 	}
 
-	retVal = getaddrinfo(IP, PORT, &hints, &addr);
+	cout << "enter ip and port" << endl;
+
+	cin >> ip >> port;
+
+	retVal = getaddrinfo(ip, port, &hints, &addr);
 
 	retVal = connect(clientSocket, addr->ai_addr, (int)addr->ai_addrlen);
 
