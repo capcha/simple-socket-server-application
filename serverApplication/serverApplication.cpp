@@ -129,7 +129,8 @@ int server() {
 
 		int len = recvTextStr.length();
 		buf = recvTextStr.substr(j, len);
-		result = result + buf + " " + to_string(len - j + 1) + "\n";
+		//result = result + buf + " " + to_string(len - j + 1) + "\n";
+		result = result + buf + " " + to_string(len - j - 1) + "\n";
 
 		retVal = send(clientSocket, result.c_str(), RECVTEXTLEN, 0);
 
