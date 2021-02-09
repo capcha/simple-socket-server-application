@@ -15,7 +15,7 @@ const char* SERVERPORT = "2001";
 const int TEXTLEN = 1024;
 const int RECVTEXTLEN = 2048;
 const int PORTLEN = 6;
-const int IPLEN = 16;
+const int IPLEN = 17;
 
 int server() {
 	WSADATA wsaData;
